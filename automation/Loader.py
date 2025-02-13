@@ -16,7 +16,7 @@ def load_uploaded_file(uploaded_file):
         pd.DataFrame: Processed DataFrame ready for analysis.
     """
     try:
-        # Debug: show file name and extension
+        # Show file name and extension for debugging
         st.write(f"Uploaded file: {uploaded_file.name}")
         file_extension = uploaded_file.name.split(".")[-1].lower()
         st.write(f"Detected file extension: {file_extension}")
@@ -25,24 +25,35 @@ def load_uploaded_file(uploaded_file):
             st.error("Unsupported file format. Please upload a CSV, Excel, or Stata (.dta) file.")
             return None
         
-        # Read file based on its extension
         if file_extension == "csv":
             df = pd.read_csv(uploaded_file)
         elif file_extension == "xlsx":
             df = pd.read_excel(uploaded_file, engine="openpyxl")
         elif file_extension == "dta":
             try:
-                df = pd.read_stata(uploaded_file, convert_categoricals=False)
+                # Attempt to read with conversion for value labels
+                df = pd.read_stata(uploaded_file, convert_categoricals=True)
             except Exception as e:
-                st.error(f"Error reading .dta file: {e}")
-                return None
+                st.error(f"Error reading .dta with convert_categoricals=True: {e}")
+                st.info("Falling back to convert_categoricals=False...")
+                df = pd.read_stata(uploaded_file, convert_categoricals=False)
+            
+            # For categorical columns, ensure empty string is an allowed category
+            cat_cols = df.select_dtypes(include=["category"]).columns
+            for col in cat_cols:
+                if "" not in df[col].cat.categories:
+                    df[col] = df[col].cat.add_categories([""])
+                df[col] = df[col].fillna("")
+                df[col] = df[col].astype(str)
         else:
             st.error("Unsupported file type encountered.")
             return None
         
         st.success(f"File uploaded successfully: {uploaded_file.name}")
-        st.write("### Data Preview:")
-        st.dataframe(df.head())
+        st.write("### Columns in the dataset:")
+        st.write(df.columns.tolist())
+        st.write("### Data Preview (first 10 rows):")
+        st.dataframe(df.head(10))
         return df
         
     except Exception as e:
