@@ -7,7 +7,7 @@ def ensure_numeric_consumption(data: pd.DataFrame) -> pd.DataFrame:
     Any conversion errors will be coerced to NaN.
     
     Parameters:
-        data (pd.DataFrame): Input DataFrame expected to have a 'Consumption' column.
+        data (pd.DataFrame): DataFrame expected to have a 'Consumption' column.
         
     Returns:
         pd.DataFrame: DataFrame with the 'Consumption' column converted to numeric type.
@@ -24,7 +24,7 @@ def map_education_levels(data: pd.DataFrame, mapping: dict = None) -> pd.DataFra
     A new column 'education_level' is added to the DataFrame.
     
     Parameters:
-        data (pd.DataFrame): Input DataFrame expected to have a 's4aq2' column.
+        data (pd.DataFrame): DataFrame expected to have a 's4aq2' column.
         mapping (dict, optional): Custom mapping dictionary. Uses default mapping if None.
         
     Returns:
@@ -69,10 +69,26 @@ def map_education_levels(data: pd.DataFrame, mapping: dict = None) -> pd.DataFra
     data["education_level"] = data["s4aq2"].map(mapping)
     return data
 
+def convert_categorical_columns(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert key categorical columns to strings to ensure proper filtering and display.
+    
+    Parameters:
+        data (pd.DataFrame): Input DataFrame.
+        
+    Returns:
+        pd.DataFrame: Updated DataFrame with categorical columns as strings.
+    """
+    if "province" in data.columns:
+        data["province"] = data["province"].astype(str)
+    if "s1q1" in data.columns:
+        data["s1q1"] = data["s1q1"].astype(str)
+    return data
+
 def handle_missing_values(data: pd.DataFrame) -> pd.DataFrame:
     """
     Handle missing values in the DataFrame.
-    For instance, fill missing 'Consumption' values with the median.
+    For example, fill missing 'Consumption' values with the median.
     
     Parameters:
         data (pd.DataFrame): Input DataFrame.
@@ -82,9 +98,48 @@ def handle_missing_values(data: pd.DataFrame) -> pd.DataFrame:
     """
     if "Consumption" in data.columns:
         median_consumption = data["Consumption"].median()
-        data["Consumption"].fillna(median_consumption, inplace=True)
+        data["Consumption"] = data["Consumption"].fillna(median_consumption)
     return data
 
+# ------------------------------
+# Added Code: Generic Cleaning for All Columns
+def clean_all_columns(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Perform generic cleaning on all columns in the DataFrame.
+    - For object (string) columns: strip whitespace, replace "" with "Unknown", and fill missing with "Unknown".
+    - For numeric columns: fill missing values with the column's median.
+    - Attempt to convert columns to numeric if possible (non-numeric values remain unchanged).
+    
+    Parameters:
+        data (pd.DataFrame): Input DataFrame.
+        
+    Returns:
+        pd.DataFrame: Cleaned DataFrame.
+    """
+    for col in data.columns:
+        # If column is object type, strip whitespace and handle empty strings
+        if data[col].dtype == 'object':
+            # Strip leading/trailing whitespace
+            data[col] = data[col].str.strip()
+            # Replace empty strings with "Unknown"
+            data[col] = data[col].replace("", "Unknown")
+            # Also fill missing values with "Unknown"
+            data[col] = data[col].fillna("Unknown")
+        elif pd.api.types.is_numeric_dtype(data[col]):
+            # Fill missing numeric values with median
+            data[col] = data[col].fillna(data[col].median())
+        else:
+            # For other data types, fill missing with "Unknown"
+            data[col] = data[col].fillna("Unknown")
+        
+        # Attempt numeric conversion for each column (errors='ignore' leaves non-numeric values unchanged)
+        try:
+            data[col] = pd.to_numeric(data[col], errors='ignore')
+        except Exception as e:
+            st.warning(f"Could not convert column {col} to numeric: {e}")
+    return data
+
+# ------------------------------
 def transform_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     Apply a series of transformations to the raw data.
@@ -92,7 +147,9 @@ def transform_data(data: pd.DataFrame) -> pd.DataFrame:
     This includes:
     - Converting 'Consumption' to numeric.
     - Mapping raw education values (from 's4aq2') to a standardized 'education_level' column.
+    - Converting key categorical columns (e.g., 'province' and 's1q1') to strings.
     - Handling missing values.
+    - [Added Code] Generic cleaning on all columns.
     
     Parameters:
         data (pd.DataFrame): Raw DataFrame loaded from the user’s file.
@@ -102,5 +159,8 @@ def transform_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     data = ensure_numeric_consumption(data)
     data = map_education_levels(data)
+    data = convert_categorical_columns(data)
     data = handle_missing_values(data)
-    return data
+    # [Added Code] Generic cleaning on all columns
+    data = clean_all_columns(data)
+    return data.copy()
