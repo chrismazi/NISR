@@ -1,4 +1,7 @@
 import streamlit as st
+import pandas as pd
+import plotly.express as px
+
 from Loader import load_uploaded_file
 from transformer import transform_data
 from insights import (
@@ -7,55 +10,95 @@ from insights import (
     chart_top_5_districts_by_consumption,
     chart_poverty_rate_by_gender,
     chart_urban_vs_rural_consumption,
-    chart_poverty_distribution_by_education_level
+    chart_poverty_distribution_by_education_level,
+    ask_gemma
 )
 
 st.title("Poverty and Consumption Insights Dashboard")
 
-# File uploader
+# File Upload
 uploaded_file = st.file_uploader("Upload your dataset (CSV, Excel, or Stata .dta)", type=["csv", "xlsx", "dta"])
-
 if uploaded_file:
     raw_data = load_uploaded_file(uploaded_file)
     if raw_data is not None:
         data = transform_data(raw_data)
         st.write("### Transformed Data Preview")
         st.dataframe(data.head())
-
+        
         # Sidebar Filters
         st.sidebar.header("Filters")
-        selected_province = st.sidebar.selectbox("Select Province", ["All"] + list(data["province"].dropna().unique()))
-        selected_gender = st.sidebar.selectbox("Select Gender", ["All"] + list(data["s1q1"].dropna().unique()))
-
-        # Apply filters
+        provinces = list(data["province"].dropna().unique())
+        genders = list(data["s1q1"].dropna().unique())
+        selected_province = st.sidebar.selectbox("Select Province", ["All"] + provinces)
+        selected_gender = st.sidebar.selectbox("Select Gender (s1q1)", ["All"] + genders)
+        
         filtered_data = data.copy()
         if selected_province != "All":
             filtered_data = filtered_data[filtered_data["province"] == selected_province]
         if selected_gender != "All":
             filtered_data = filtered_data[filtered_data["s1q1"] == selected_gender]
-
-        # Sidebar - Frequency Table Options
+        
+        # Sidebar: AI Insights - User Prompt
+        st.sidebar.subheader("💬 Ask NISR AI for Insights")
+        user_query = st.sidebar.text_input("Enter your question about the charts:")
+        if user_query:
+            # Prepare context from key charts using filtered data
+            context = (
+                f"Poverty Rate by Province Data: {chart_poverty_distribution_by_province(filtered_data).to_dict()}\n"
+                f"Average Consumption by Province Data: {chart_average_consumption_by_province(filtered_data).to_dict()}\n"
+                f"Top 5 Districts by Consumption Data: {chart_top_5_districts_by_consumption(filtered_data).to_dict()}\n"
+                f"Poverty Rate by Gender Data: {chart_poverty_rate_by_gender(filtered_data).to_dict()}\n"
+                f"Urban vs Rural Consumption Data: {chart_urban_vs_rural_consumption(filtered_data).to_dict()}\n"
+            )
+            ai_response = ask_gemma(user_query, context)
+            st.sidebar.write("**NISR AI:**", ai_response)
+        
+        # Sidebar: Frequency Table Generator
         st.sidebar.subheader("Generate Frequency Table")
         freq_options = [
             "None",
             "Poverty by Province",
             "Poverty by Gender",
-            "Poverty by Education Level"
+            "Poverty by Education Level",
+            "Education Level by Province",
+            "Province by Gender",
+            "Gender by Education Level"
         ]
         selected_freq = st.sidebar.selectbox("Select Analysis for Frequency Table", freq_options)
-
         if selected_freq != "None":
             if selected_freq == "Poverty by Province":
-                freq_table = data.pivot_table(index="province", columns="poverty", aggfunc="size", fill_value=0)
+                freq_table = pd.crosstab(filtered_data["province"], filtered_data["poverty"])
             elif selected_freq == "Poverty by Gender":
-                freq_table = data.pivot_table(index="s1q1", columns="poverty", aggfunc="size", fill_value=0)
+                freq_table = pd.crosstab(filtered_data["s1q1"], filtered_data["poverty"])
             elif selected_freq == "Poverty by Education Level":
-                freq_table = data.pivot_table(index="education_level", columns="poverty", aggfunc="size", fill_value=0)
+                if "education_level" in filtered_data.columns:
+                    freq_table = pd.crosstab(filtered_data["education_level"], filtered_data["poverty"])
+                else:
+                    freq_table = pd.DataFrame({"Error": ["Education level data is missing"]})
+            elif selected_freq == "Education Level by Province":
+                if "education_level" in filtered_data.columns:
+                    freq_table = pd.crosstab(filtered_data["province"], filtered_data["education_level"])
+                else:
+                    freq_table = pd.DataFrame({"Error": ["Education level data is missing"]})
+            elif selected_freq == "Province by Gender":
+                freq_table = pd.crosstab(filtered_data["province"], filtered_data["s1q1"])
+            elif selected_freq == "Gender by Education Level":
+                if "education_level" in filtered_data.columns:
+                    freq_table = pd.crosstab(filtered_data["s1q1"], filtered_data["education_level"])
+                else:
+                    freq_table = pd.DataFrame({"Error": ["Education level data is missing"]})
             
             st.sidebar.write("### Frequency Table")
             st.sidebar.dataframe(freq_table)
-
-        # Display charts with filtered data
+            csv = freq_table.to_csv().encode('utf-8')
+            st.sidebar.download_button(
+                label="Download Frequency Table as CSV",
+                data=csv,
+                file_name=f"{selected_freq.replace(' ', '_').lower()}_frequency_table.csv",
+                mime="text/csv"
+            )
+        
+        # Display charts using filtered data
         st.subheader("Poverty Distribution by Province")
         fig1 = chart_poverty_distribution_by_province(filtered_data)
         if fig1: st.plotly_chart(fig1)
