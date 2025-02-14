@@ -94,9 +94,9 @@ def generate_pdf_report(freq_tables: dict, ai_interpretation: str) -> io.BytesIO
     # --- Cover Page ---
     pdf.add_page()
     pdf.set_font("DejaVuSans", "B", 24)
-    pdf.cell(0, 20, "Poverty and Consumption Insights Report", ln=True, align="C")
+    pdf.cell(0, 20, "EICV Poverty and Consumption Insights Report", ln=True, align="C")
     pdf.set_font("DejaVuSans", "", 16)
-    pdf.cell(0, 10, "Institution Name", ln=True, align="C")
+    pdf.cell(0, 10, "National Institute of Statistics Rwanda", ln=True, align="C")
     pdf.cell(0, 10, "Year: 2024", ln=True, align="C")
     pdf.ln(30)
     
@@ -109,7 +109,7 @@ def generate_pdf_report(freq_tables: dict, ai_interpretation: str) -> io.BytesIO
     foreword_text = (
         "This report provides a comprehensive analysis of poverty and consumption patterns based on the uploaded dataset. "
         "The frequency tables and visualizations included are generated automatically through our institutional data analytics pipeline. "
-        "The conclusions section provides AI-generated insights to support evidence-based decision making."
+        "The conclusions section provides NISR AI-generated insights to support evidence-based decision making."
     )
     pdf.multi_cell(0, 10, foreword_text)
     pdf.ln(10)
@@ -124,7 +124,7 @@ def generate_pdf_report(freq_tables: dict, ai_interpretation: str) -> io.BytesIO
         "1. Foreword",
         "2. Frequency Table Analyses",
         "   a. " + " | ".join(freq_tables.keys()),
-        "3. AI-Generated Conclusions"
+        "3. NISR AI-Generated Conclusions"
     ]
     for item in toc_items:
         pdf.cell(0, 8, item, ln=True)
