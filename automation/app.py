@@ -14,6 +14,8 @@ from insights import (
     ask_gemma
 )
 
+from pdf_report import generate_pdf_report  # Moved to the top with other imports
+
 st.title("Poverty and Consumption Insights Dashboard")
 
 # File Upload
@@ -24,20 +26,20 @@ if uploaded_file:
         data = transform_data(raw_data)
         st.write("### Transformed Data Preview")
         st.dataframe(data.head())
-        
+
         # Sidebar Filters
         st.sidebar.header("Filters")
         provinces = list(data["province"].dropna().unique())
         genders = list(data["s1q1"].dropna().unique())
         selected_province = st.sidebar.selectbox("Select Province", ["All"] + provinces)
         selected_gender = st.sidebar.selectbox("Select Gender (s1q1)", ["All"] + genders)
-        
+
         filtered_data = data.copy()
         if selected_province != "All":
             filtered_data = filtered_data[filtered_data["province"] == selected_province]
         if selected_gender != "All":
             filtered_data = filtered_data[filtered_data["s1q1"] == selected_gender]
-        
+
         # Sidebar: AI Insights - User Prompt
         st.sidebar.subheader("💬 Ask NISR AI for Insights")
         user_query = st.sidebar.text_input("Enter your question about the charts:")
@@ -52,7 +54,7 @@ if uploaded_file:
             )
             ai_response = ask_gemma(user_query, context)
             st.sidebar.write("**NISR AI:**", ai_response)
-        
+
         # Sidebar: Frequency Table Generator
         st.sidebar.subheader("Generate Frequency Table")
         freq_options = [
@@ -87,7 +89,7 @@ if uploaded_file:
                     freq_table = pd.crosstab(filtered_data["s1q1"], filtered_data["education_level"])
                 else:
                     freq_table = pd.DataFrame({"Error": ["Education level data is missing"]})
-            
+
             st.sidebar.write("### Frequency Table")
             st.sidebar.dataframe(freq_table)
             csv = freq_table.to_csv().encode('utf-8')
@@ -97,28 +99,56 @@ if uploaded_file:
                 file_name=f"{selected_freq.replace(' ', '_').lower()}_frequency_table.csv",
                 mime="text/csv"
             )
-        
+
+        # PDF Report Generation Section
+        if st.sidebar.button("Generate PDF Report"):
+            # Create a dictionary of frequency tables
+            freq_tables = {}
+            try:
+                freq_tables["Poverty by Province"] = pd.crosstab(filtered_data["province"], filtered_data["poverty"])
+            except Exception:
+                freq_tables["Poverty by Province"] = pd.DataFrame({"Error": ["Data not available"]})
+            try:
+                freq_tables["Poverty by Gender"] = pd.crosstab(filtered_data["s1q1"], filtered_data["poverty"])
+            except Exception:
+                freq_tables["Poverty by Gender"] = pd.DataFrame({"Error": ["Data not available"]})
+
+            ai_interpretation = "AI-generated conclusions go here. (This should be generated dynamically.)"
+            pdf_buffer = generate_pdf_report(freq_tables, ai_interpretation)
+            st.sidebar.download_button(
+                label="Download PDF Report",
+                data=pdf_buffer,
+                file_name="Institution_Report.pdf",
+                mime="application/pdf"
+            )
+
         # Display charts using filtered data
         st.subheader("Poverty Distribution by Province")
         fig1 = chart_poverty_distribution_by_province(filtered_data)
-        if fig1: st.plotly_chart(fig1)
-        
+        if fig1:
+            st.plotly_chart(fig1)
+
         st.subheader("Average Consumption by Province")
         fig2 = chart_average_consumption_by_province(filtered_data)
-        if fig2: st.plotly_chart(fig2)
-        
+        if fig2:
+            st.plotly_chart(fig2)
+
         st.subheader("Top 5 Districts by Consumption")
         fig3 = chart_top_5_districts_by_consumption(filtered_data)
-        if fig3: st.plotly_chart(fig3)
-        
+        if fig3:
+            st.plotly_chart(fig3)
+
         st.subheader("Poverty Rate by Gender")
         fig4 = chart_poverty_rate_by_gender(filtered_data)
-        if fig4: st.plotly_chart(fig4)
-        
+        if fig4:
+            st.plotly_chart(fig4)
+
         st.subheader("Urban vs Rural Consumption")
         fig5 = chart_urban_vs_rural_consumption(filtered_data)
-        if fig5: st.plotly_chart(fig5)
-        
+        if fig5:
+            st.plotly_chart(fig5)
+
         st.subheader("Poverty Distribution by Education Level")
         fig6 = chart_poverty_distribution_by_education_level(filtered_data)
-        if fig6: st.plotly_chart(fig6)
+        if fig6:
+            st.plotly_chart(fig6)
