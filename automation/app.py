@@ -112,6 +112,29 @@ if uploaded_file:
                 freq_tables["Poverty by Gender"] = pd.crosstab(filtered_data["s1q1"], filtered_data["poverty"])
             except Exception:
                 freq_tables["Poverty by Gender"] = pd.DataFrame({"Error": ["Data not available"]})
+            try:
+                freq_tables["Poverty by Education Level"] = pd.crosstab(filtered_data["education_level"], filtered_data["poverty"])
+            except Exception:
+                freq_tables["Poverty by Education Level"] = pd.DataFrame({"Error": ["Data not available"]})
+            try:
+               freq_tables["Education Level by Province"] = pd.crosstab(filtered_data["province"], filtered_data["education_level"])
+            except Exception:
+               freq_tables["Education Level by Province"] = pd.DataFrame({"Error": ["Data not available"]})
+            try:
+               freq_tables["Province by Gender"] = pd.crosstab(filtered_data["province"], filtered_data["s1q1"])
+            except Exception:
+               freq_tables["Province by Gender"] = pd.DataFrame({"Error": ["Data not available"]})
+            try:
+               freq_tables["Gender by Education Level"] = pd.crosstab(filtered_data["s1q1"], filtered_data["education_level"])
+            except Exception:
+               freq_tables["Gender by Education Level"] = pd.DataFrame({"Error": ["Data not available"]})
+            try:
+               freq_tables["Urban vs Rural Consumption Frequency"] = pd.crosstab(
+            filtered_data["ur2_2012"],
+            pd.cut(filtered_data["Consumption"], bins=5)
+               )
+            except Exception:
+               freq_tables["Urban vs Rural Consumption Frequency"] = pd.DataFrame({"Error": ["Data not available"]})
 
             ai_interpretation = "AI-generated conclusions go here. (This should be generated dynamically.)"
             pdf_buffer = generate_pdf_report(freq_tables, ai_interpretation)

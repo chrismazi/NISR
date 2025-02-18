@@ -141,7 +141,7 @@ def generate_pdf_report(freq_tables: dict, ai_interpretation: str) -> io.BytesIO
     # --- Conclusions and Recommendations ---
     pdf.add_page()
     pdf.set_font("DejaVuSans", "B", 18)
-    pdf.cell(0, 10, "AI-Generated Conclusions", ln=True)
+    pdf.cell(0, 10, "NISR AI-Generated Conclusions", ln=True)
     pdf.ln(5)
     pdf.set_font("DejaVuSans", "", 12)
     pdf.multi_cell(0, 10, ai_interpretation)
@@ -152,16 +152,35 @@ def generate_pdf_report(freq_tables: dict, ai_interpretation: str) -> io.BytesIO
     pdf_buffer.seek(0)
     return pdf_buffer
 
+# ---------------------------
 # Example usage (for testing purposes):
 if __name__ == "__main__":
-    # Create a sample frequency table DataFrame
-    data = {'poverty': [0, 1, 0, 1], 'count': [100, 50, 150, 75]}
+    # Create sample data for frequency tables
+    data = {
+        "province": ["Kigali", "Kigali", "Northern", "Eastern", "Kigali", "Southern", "Northern"],
+        "poverty": [1, 0, 1, 0, 1, 0, 1],
+        "s1q1": ["Male", "Female", "Female", "Male", "Female", "Male", "Male"],
+        "education_level": ["Primary", "Secondary", "Primary", "Unknown", "Secondary", "Primary", "Primary"],
+        "ur2_2012": ["Urban", "Urban", "Rural", "Rural", "Urban", "Rural", "Rural"]
+    }
     df = pd.DataFrame(data)
-    df.index.name = 123.45  # This index name is a float; using str() fixes that.
     
-    freq_tables = {"Poverty by Province": df}
+    # Build a dictionary of multiple frequency tables
+    freq_tables = {
+        "Poverty by Province": pd.crosstab(df["province"], df["poverty"]),
+        "Poverty by Gender": pd.crosstab(df["s1q1"], df["poverty"]),
+        "Poverty by Education Level": pd.crosstab(df["education_level"], df["poverty"]),
+        "Education Level by Province": pd.crosstab(df["province"], df["education_level"]),
+        "Province by Gender": pd.crosstab(df["province"], df["s1q1"]),
+        "Gender by Education Level": pd.crosstab(df["s1q1"], df["education_level"]),
+        "Urban vs Rural Consumption Frequency": pd.crosstab(df["ur2_2012"], pd.cut([100,200,150,300,250,400,350], bins=3))
+    }
+    
     ai_interpretation = (
-        "The AI analysis indicates a high correlation between poverty and low consumption patterns in rural areas."
+        "The AI analysis indicates significant disparities across regions. "
+        "Kigali shows a higher incidence of poverty in conjunction with lower average consumption levels, "
+        "suggesting potential areas for targeted intervention. Additionally, the data reveals gender-based differences "
+        "in poverty levels that warrant further investigation."
     )
     
     pdf_buffer = generate_pdf_report(freq_tables, ai_interpretation)
