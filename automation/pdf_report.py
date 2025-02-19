@@ -51,8 +51,9 @@ def draw_table(pdf: FPDF, df: pd.DataFrame, title: str):
     # Calculate column widths based on page width (using margins)
     page_width = pdf.w - 2 * pdf.l_margin
     num_cols = len(headers)
-    col_width = page_width / num_cols
-    
+    # Slightly reduce each column’s width to prevent text from clipping
+    col_width = (page_width / num_cols) - 2  # <-- CHANGED
+
     # Set header font and print headers with border
     pdf.set_font("DejaVuSans", "B", 10)
     for header in headers:
@@ -82,8 +83,11 @@ def generate_pdf_report(freq_tables: dict, ai_interpretation: str) -> io.BytesIO
     Returns:
         BytesIO: In-memory buffer containing the generated PDF report.
     """
-    pdf = PDFReport()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    # Switch to Landscape orientation for more horizontal space
+    pdf = PDFReport(orientation='L')  # <-- CHANGED
+    
+    # Reduce margins slightly to avoid text cutting
+    pdf.set_auto_page_break(auto=True, margin=10)  # <-- CHANGED
     
     # Add Unicode fonts.
     # Ensure the font files are in your project directory or update the paths accordingly.
@@ -155,7 +159,6 @@ def generate_pdf_report(freq_tables: dict, ai_interpretation: str) -> io.BytesIO
 # ---------------------------
 # Example usage (for testing purposes):
 if __name__ == "__main__":
-    # Create sample data for frequency tables
     data = {
         "province": ["Kigali", "Kigali", "Northern", "Eastern", "Kigali", "Southern", "Northern"],
         "poverty": [1, 0, 1, 0, 1, 0, 1],
@@ -165,7 +168,6 @@ if __name__ == "__main__":
     }
     df = pd.DataFrame(data)
     
-    # Build a dictionary of multiple frequency tables
     freq_tables = {
         "Poverty by Province": pd.crosstab(df["province"], df["poverty"]),
         "Poverty by Gender": pd.crosstab(df["s1q1"], df["poverty"]),
@@ -173,7 +175,10 @@ if __name__ == "__main__":
         "Education Level by Province": pd.crosstab(df["province"], df["education_level"]),
         "Province by Gender": pd.crosstab(df["province"], df["s1q1"]),
         "Gender by Education Level": pd.crosstab(df["s1q1"], df["education_level"]),
-        "Urban vs Rural Consumption Frequency": pd.crosstab(df["ur2_2012"], pd.cut([100,200,150,300,250,400,350], bins=3))
+        "Urban vs Rural Consumption Frequency": pd.crosstab(
+            df["ur2_2012"], 
+            pd.cut([100,200,150,300,250,400,350], bins=3)
+        )
     }
     
     ai_interpretation = (
@@ -185,6 +190,5 @@ if __name__ == "__main__":
     
     pdf_buffer = generate_pdf_report(freq_tables, ai_interpretation)
     
-    # Save the PDF to a file for testing
     with open("Institution_Report.pdf", "wb") as f:
         f.write(pdf_buffer.getbuffer())
