@@ -174,11 +174,11 @@ if __name__ == "__main__":
         "Poverty by Education Level": pd.crosstab(df["education_level"], df["poverty"]),
         "Education Level by Province": pd.crosstab(df["province"], df["education_level"]),
         "Province by Gender": pd.crosstab(df["province"], df["s1q1"]),
-        "Gender by Education Level": pd.crosstab(df["s1q1"], df["education_level"]),
-        "Urban vs Rural Consumption Frequency": pd.crosstab(
-            df["ur2_2012"], 
-            pd.cut([100,200,150,300,250,400,350], bins=3)
-        )
+       # "Gender by Education Level": pd.crosstab(df["s1q1"], df["education_level"]),
+       # "Urban vs Rural Consumption Frequency": pd.crosstab(
+           # df["ur2_2012"], 
+           # pd.cut([100,200,150,300,250,400,350], bins=3)
+        #)
     }
     
     ai_interpretation = (
